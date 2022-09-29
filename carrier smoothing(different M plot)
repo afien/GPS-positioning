@@ -1,0 +1,270 @@
+clear all
+
+load('eph.dat');
+load('rcvr.dat');
+c=299792458;
+werr=7.2921151467e-5;
+mu=3.986005e14;
+F=-4.442807633e-10;
+final_x=-2957014;
+final_y=5075859;
+final_z=2476270;
+finalposi=[final_x final_y final_z];
+%%
+for i=1:size(eph,1)-1
+    for j=i+1:size(eph,1)
+        if eph(i,2)>eph(j,2)
+            emp=eph(j,:);
+            eph(j,:)=eph(i,:);
+            eph(i,:)=emp;
+            emp=[];
+        end
+    end
+end
+%%
+count_a=1;
+count_b=1;
+for i=2:size(rcvr,1)
+    if rcvr(i-1,1)==rcvr(i,1)
+        temp_rcvr(count_a,:)=rcvr(i-1,:);
+        count_a=count_a+1;
+    elseif rcvr(i-1,1)~=rcvr(i,1)
+        temp_rcvr(count_a,:)=rcvr(i-1,:);
+        Rcvr(count_b,1)={temp_rcvr};
+        count_a=1;
+        temp_rcvr=[];
+        count_b=count_b+1;
+    elseif i==size(rcvr,1)
+        temp_rcvr(count_a,:)=rcvr(i,:);
+        Rcvr(count_b,1)={temp_rcvr};
+        temp_rcvr=[];
+    end
+end
+temp_rcvr=[];
+%%
+for i=1:size(Rcvr,1)
+    temp_rcvr=Rcvr{i,1};
+    count_a=1;
+    for j=1:size(temp_rcvr,1)
+        for k=1:size(eph,1)
+            if temp_rcvr(j,2)==eph(k,2)
+                dataeph(count_a,:)=eph(k,:);
+                datarcvr(count_a,:)=temp_rcvr(j,:);
+                count_a=count_a+1;
+            end
+        end
+    end
+    count_a=1;
+    Rcvr(i,2)={dataeph};
+    Rcvr(i,3)={datarcvr};
+    dataeph=[];
+    datarcvr=[];
+    temp_rcvr=[];
+end
+%%
+for i=1:size(Rcvr,1)
+    temp_eph=Rcvr{i,2};
+    temp_rcvr=Rcvr{i,3};
+    for j=1:size(temp_rcvr,1)-1
+        for k=j+1:size(temp_rcvr)
+            if temp_rcvr(j,2)==temp_rcvr(k,2)
+                if abs(temp_eph(j,1)-temp_rcvr(j,1))>abs(temp_eph(k,1)-temp_rcvr(k,1))
+                    temp_eph(j,:)=0;
+                    temp_rcvr(j,:)=0;
+                elseif abs(temp_eph(j,1)-temp_rcvr(j,1))<abs(temp_eph(k,1)-temp_rcvr(k,1))
+                    temp_eph(k,:)=0;
+                    temp_rcvr(k,:)=0;
+                end
+            end
+        end
+    end
+    for l=1:size(temp_eph)-1
+        for m=l+1:size(temp_eph)
+            if temp_eph(l,2)>temp_eph(m,2)
+                emp=temp_eph(m,:);
+                temp_eph(m,:)=temp_eph(l,:);
+                temp_eph(l,:)=emp;
+                emp=[];
+            end
+        end
+    end
+    for n=1:size(temp_rcvr)-1
+        for o=l+1:size(temp_rcvr)
+            if temp_rcvr(n,2)>temp_rcvr(o,2)
+                emp=temp_rcvr(o,:);
+                temp_rcvr(o,:)=temp_rcvr(n,:);
+                temp_rcvr(n,:)=emp;
+                emp=[];
+            end
+        end
+    end     
+    for a=size(temp_eph,1):-1:1
+        if temp_eph(a,1)==0
+            temp_eph(a,:)=[];
+        end
+    end
+    for b=size(temp_rcvr):-1:1
+        if temp_rcvr(b,1)==0
+            temp_rcvr(b,:)=[];
+        end
+    end
+    Rcvr(i,2)={temp_eph};
+    Rcvr(i,3)={temp_rcvr};
+    temp_eph=[];
+    temp_rcvr=[];
+end
+%%
+for o=1:size(Rcvr,1)
+    dataeph=Rcvr{o,2};
+    datarcvr=Rcvr{o,3};
+    for i=1:size(dataeph,1)
+         toe=dataeph(i,4);
+         toc=dataeph(i,3);
+         af0=dataeph(i,5);
+         af1=dataeph(i,6);
+         af2=dataeph(i,7);
+         e=dataeph(i,9);
+         sqrta=dataeph(i,10);
+         dn=dataeph(i,11);
+         m0=dataeph(i,12);
+         w=dataeph(i,13);
+         omg0=dataeph(i,14);
+         i0=dataeph(i,15);
+         odot=dataeph(i,16);
+         idot=dataeph(i,17);
+         cus=dataeph(i,18);
+         cuc=dataeph(i,19);
+         cis=dataeph(i,20);
+         cic=dataeph(i,21);
+         crs=dataeph(i,22);
+         crc=dataeph(i,23);
+         A=sqrta^2;
+         n0=sqrt(mu/(A)^3);
+         t=datarcvr(i,1)-datarcvr(i,3)/c;
+         tk=t-toe;
+         n=n0+dn;
+         Mk=m0+n*tk;
+         E=Mk;
+         E_new = E + (Mk - E + e*sin(E))/(1 - e*cos(E));
+         while (E_new - E) > 10^-12
+            E = E_new;
+            E_new = Mk +e*sin(E);
+         end
+         Ek = E_new;
+         tr=F*(e^sqrta)*sin(Ek);
+         tsv=af0+af1*(t-toc)+af2*(t-toc)^2+tr;
+         Tsv(i,1)=tsv;
+         vk=2*atan(sqrt((1+e)/(1-e))*tan(Ek/2));
+         latk=vk+w;
+         duk=cus*sin(2*latk)+cuc*cos(2*latk);
+         drk=crs*sin(2*latk)+crc*cos(2*latk);
+         dik=cis*sin(2*latk)+cic*cos(2*latk);
+         uk=latk+duk;
+         rk=A*(1-e*cos(Ek))+drk;
+         ik=i0+dik+idot*tk;
+         xkp=rk*cos(uk);
+         ykp=rk*sin(uk);
+         omgk=omg0+(odot-werr)*tk-werr*toe;
+         xk=xkp*cos(omgk)-ykp*cos(ik)*sin(omgk);
+         yk=xkp*sin(omgk)+ykp*cos(ik)*cos(omgk);
+         zk=ykp*sin(ik);
+         SatPosi(i,1)=dataeph(i,2);
+         SatPosi(i,2)=xk;
+         SatPosi(i,3)=yk;
+         SatPosi(i,4)=zk;
+    end
+   Rcvr(o,4)={SatPosi};
+   Rcvr(o,5)={Tsv};
+   dataeph=[];
+   datarcvr=[];
+   SatPosi=[];
+   Tsv=[];
+end
+%%
+constant=[5 10 100 500 1000 2000];
+for n=1:size(constant,2)
+    m=1;
+    for o=1:size(Rcvr,1)
+        if o>1
+            previous_rcvr_data=datarcvr;
+            previous_new_rho=new_rho;
+        end
+        datarcvr=Rcvr{o,3};
+        SatPosi=Rcvr{o,4};
+        Tsv=Rcvr{o,5};
+        x=0;
+        y=0;
+        z=0;
+        bias=0;
+        new_rho=[];
+        rhobar=[];
+        rho=[];
+        drho=[];
+        H=[];
+        for j=1:size(datarcvr,1)
+            rho(j,1)=datarcvr(j,3)+c*Tsv(j);
+        end
+        lamda_L1=c/1575.42e06;
+        M=constant(1,n);
+        bad=0;
+        if m>=M
+            m=M;
+        end
+        if o==1
+            new_rho=rho;
+        else
+            for j=1:size(datarcvr,1)
+                for k=1:size(previous_rcvr_data,1)
+                    if datarcvr(j,2)==previous_rcvr_data(k,2)
+                        new_rho(j,1)=(1/m)*rho(j,1) + ((m-1)/m)*(previous_new_rho(k,1) + (datarcvr(j,4)-previous_rcvr_data(k,4))*lamda_L1);
+                        break;
+                    elseif k==size(previous_rcvr_data,1) && datarcvr(j,2)~=previous_rcvr_data(k,2)
+                        new_rho(j,1)=rho(j,1);
+                        bad=bad+1;
+                        break;
+                    end
+                end
+            end
+            if bad==0
+                m=m+1;
+            elseif bad>0
+                m=1;
+            end
+        end
+
+        for i=1:1000000
+            for j=1:size(datarcvr,1)
+                rhobar(j,1)=norm([x-SatPosi(j,2) y-SatPosi(j,3) z-SatPosi(j,4)]);
+                drho(j,1)=new_rho(j,1)-rhobar(j,1)-bias;
+                H(j,:)=[(x-SatPosi(j,2))/rhobar(j,1) (y-SatPosi(j,3))/rhobar(j,1) (z-SatPosi(j,4))/rhobar(j,1) 1];
+            end
+            delta=pinv(H)*drho;
+            x=x+delta(1);
+            y=y+delta(2);
+            z=z+delta(3);
+            bias=bias+delta(4);
+            if abs(delta(1))<10^-8||abs(delta(2))<10^-8||abs(delta(3))<10^-8
+                 break;
+            end
+        end
+         r_xyzb(o,1)=x;
+         r_xyzb(o,2)=y;
+         r_xyzb(o,3)=z;
+         r_xyzb(o,4)=bias/c;
+    end
+    wgs84 = wgs84Ellipsoid('meter');
+    for p=1:size(r_xyzb,1)
+        [llh(p,1),llh(p,2),llh(p,3)] = ecef2geodetic(wgs84,r_xyzb(p,1),r_xyzb(p,2),r_xyzb(p,3));
+    end
+    for p=1:size(r_xyzb,1)
+        [enu(p,1),enu(p,2),enu(p,3)] = ecef2enu(r_xyzb(p,1),r_xyzb(p,2),r_xyzb(p,3),llh(1,1),llh(1,2),llh(1,3),wgs84);
+    end
+    plot(enu(:,1),enu(:,2),'*'),grid %plot value can be modified
+    axis square;axis equal
+    title('EN position');
+    ylabel('north(m)');
+    xlabel('east(m)');
+    legend_str{n}=['M = ' num2str(M)];
+    hold on;
+end
+legend(legend_str);

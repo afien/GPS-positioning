@@ -1,0 +1,38 @@
+%Use this code to generate eph and rcvr data
+
+clear all;
+
+% remember to change the file path into the path in your computer
+filePath_nav = '.nav'; %input .nav file from receiver
+filePath_obs = '.obs'; %input .obs file from receiver
+
+[XYZ_station,obs,observablesHeader,measurementsInterval]=readRinex302(filePath_obs);
+[outputEphemeris] = readRinexNav(filePath_nav);
+
+% save observation data(obs) in to rcvr.dat
+fid1 = fopen('rcvr.dat', 'w+');
+[m,n]=size(obs);
+for i=1:1:m
+    for j=1:1:n
+        if j==n
+            fprintf(fid1, '%.15d \n', obs(i,j) );
+        else
+            fprintf(fid1, '%.15d \t', obs(i,j) );
+        end
+    end
+end
+fclose(fid1);
+
+% save ephemeris data(outputEphemeris) in to eph.dat
+fid2 = fopen('eph.dat', 'w+');
+[m,n]=size(outputEphemeris.gpsEphemeris);
+for i=1:1:m
+    for j=1:1:n
+        if j==n
+            fprintf(fid2, '%.15d \n', outputEphemeris.gpsEphemeris(i,j) );
+        else
+            fprintf(fid2, '%.15d \t', outputEphemeris.gpsEphemeris(i,j) );
+        end
+    end
+end
+fclose(fid2);

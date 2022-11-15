@@ -1,0 +1,73 @@
+function Rcvr=fitEphdataIntoRcvrdata(Rcvr,eph)
+for i=1:size(Rcvr,1)
+    temp_rcvr=Rcvr{i,1};
+    count_a=1;
+    for j=1:size(temp_rcvr,1)
+        for k=1:size(eph,1)
+            if temp_rcvr(j,2)==eph(k,2)
+                dataeph(count_a,:)=eph(k,:);
+                datarcvr(count_a,:)=temp_rcvr(j,:);
+                count_a=count_a+1;
+            end
+        end
+    end
+    count_a=1;
+    Rcvr(i,2)={dataeph};
+    Rcvr(i,3)={datarcvr};
+    dataeph=[];
+    datarcvr=[];
+    temp_rcvr=[];
+end
+
+for i=1:size(Rcvr,1)
+    temp_eph=Rcvr{i,2};
+    temp_rcvr=Rcvr{i,3};
+    for j=1:size(temp_rcvr,1)-1
+        for k=j+1:size(temp_rcvr)
+            if temp_rcvr(j,2)==temp_rcvr(k,2)
+                if abs(temp_eph(j,1)-temp_rcvr(j,1))>abs(temp_eph(k,1)-temp_rcvr(k,1))
+                    temp_eph(j,:)=0;
+                    temp_rcvr(j,:)=0;
+                elseif abs(temp_eph(j,1)-temp_rcvr(j,1))<abs(temp_eph(k,1)-temp_rcvr(k,1))
+                    temp_eph(k,:)=0;
+                    temp_rcvr(k,:)=0;
+                end
+            end
+        end
+    end
+    for l=1:size(temp_eph)-1
+        for m=l+1:size(temp_eph)
+            if temp_eph(l,2)>temp_eph(m,2)
+                emp=temp_eph(m,:);
+                temp_eph(m,:)=temp_eph(l,:);
+                temp_eph(l,:)=emp;
+                emp=[];
+            end
+        end
+    end
+    for n=1:size(temp_rcvr)-1
+        for o=l+1:size(temp_rcvr)
+            if temp_rcvr(n,2)>temp_rcvr(o,2)
+                emp=temp_rcvr(o,:);
+                temp_rcvr(o,:)=temp_rcvr(n,:);
+                temp_rcvr(n,:)=emp;
+                emp=[];
+            end
+        end
+    end     
+    for a=size(temp_eph,1):-1:1
+        if temp_eph(a,1)==0
+            temp_eph(a,:)=[];
+        end
+    end
+    for b=size(temp_rcvr):-1:1
+        if temp_rcvr(b,1)==0
+            temp_rcvr(b,:)=[];
+        end
+    end
+    Rcvr(i,2)={temp_eph};
+    Rcvr(i,3)={temp_rcvr};
+    temp_eph=[];
+    temp_rcvr=[];
+end
+end

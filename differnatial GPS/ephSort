@@ -1,0 +1,12 @@
+function eph=ephSort(eph)
+for i=1:size(eph,1)-1
+    for j=i+1:size(eph,1)
+        if eph(i,2)>eph(j,2)
+            emp=eph(j,:);
+            eph(j,:)=eph(i,:);
+            eph(i,:)=emp;
+            emp=[];
+        end
+    end
+end
+end

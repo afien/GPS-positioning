@@ -1,9 +1,9 @@
 clear all
 
-eph=load('D:\USER\Desktop\專題\remix\1104\eph.dat');
-rcvr=load('D:\USER\Desktop\專題\remix\1104\rcvr.dat');
-reference_eph=load('D:\USER\Desktop\專題\remix\1104\eph1104refer.dat');
-reference_rcvr=load('D:\USER\Desktop\專題\remix\1104\rcvr1104refer.dat');
+eph=load('eph.dat'); %input user data
+rcvr=load('rcvr.dat');
+reference_eph=load('eph_refer.dat'); %input reference station data
+reference_rcvr=load('rcvr_refer.dat');
 c=299792458;
 werr=7.2921151467e-5;
 mu=3.986005e14;

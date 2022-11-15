@@ -1,0 +1,125 @@
+clear all
+
+eph=load('D:\USER\Desktop\專題\remix\1104\eph.dat');
+rcvr=load('D:\USER\Desktop\專題\remix\1104\rcvr.dat');
+reference_eph=load('D:\USER\Desktop\專題\remix\1104\eph1104refer.dat');
+reference_rcvr=load('D:\USER\Desktop\專題\remix\1104\rcvr1104refer.dat');
+c=299792458;
+werr=7.2921151467e-5;
+mu=3.986005e14;
+F=-4.442807633e-10;
+final_x=-2957014;
+final_y=5075859;
+final_z=2476270;
+finalposi=[final_x final_y final_z];
+%%
+reference_eph=ephSort(reference_eph);
+reference_Rcvr=groupRcvrdataIntoCell(reference_rcvr);
+reference_Rcvr=fitEphdataIntoRcvrdata(reference_Rcvr,reference_eph);
+
+eph=ephSort(eph);
+Rcvr=groupRcvrdataIntoCell(rcvr);
+Rcvr=fitEphdataIntoRcvrdata(Rcvr,eph);
+%%
+for i=1:size(reference_Rcvr,1)
+    reference_datarcvr=reference_Rcvr{i,3};
+    for j=1:size(Rcvr,1)
+        datarcvr=Rcvr{j,3};
+        if round(datarcvr(1,1),0)==round(reference_datarcvr(1,1),0)
+            calibrate_Rcvr{j,1}=reference_Rcvr{i,1};
+            calibrate_Rcvr{j,2}=reference_Rcvr{i,2};%eph
+            calibrate_Rcvr{j,3}=reference_Rcvr{i,3};%rcvr
+        end
+    end
+end
+%%
+for i=1:size(Rcvr,1)
+    counter=0;
+    calibrate_datarcvr=calibrate_Rcvr{i,3};
+    calibrate_dataeph=calibrate_Rcvr{i,2};
+    datarcvr=Rcvr{i,3};
+    dataeph=Rcvr{i,2};
+    for j=1:size(calibrate_datarcvr,1)
+        for k=1:size(datarcvr,1)
+            if datarcvr(k,2)==calibrate_datarcvr(j,2)
+                counter=counter+1;
+                mark_calibrate_datarcvr(counter,:)=calibrate_datarcvr(j,:);
+                mark_calibrate_dataeph(counter,:)=calibrate_dataeph(j,:);
+                mark_datarcvr(counter,:)=datarcvr(k,:);
+                mark_dataeph(counter,:)=dataeph(k,:);
+            end
+        end
+    end
+    calibrate_Rcvr{i,2}=mark_calibrate_dataeph;
+    calibrate_Rcvr{i,3}=mark_calibrate_datarcvr;
+    Rcvr{i,2}=mark_dataeph;
+    Rcvr{i,3}=mark_datarcvr;
+    mark_calibrate_dataeph=[];
+    mark_calibrate_datarcvr=[];
+    mark_dataeph=[];
+    mark_datarcvr=[];
+end
+%%
+calibrate_Rcvr=calculateSatPosiandTsv(calibrate_Rcvr);
+Rcvr=calculateSatPosiandTsv(Rcvr);
+%%
+reference_x=-2957014.764;
+reference_y=5075859.863;
+reference_z=2476270.131;
+for i=1:size(calibrate_Rcvr,1)
+    datarcvr=calibrate_Rcvr{i,3};
+    SatPosi=calibrate_Rcvr{i,4};
+    Tsv=calibrate_Rcvr{i,5};
+    for j=1:size(datarcvr,1)
+        realRange(j,1)=norm([reference_x-SatPosi(j,2) reference_y-SatPosi(j,3) reference_z-SatPosi(j,4)]);
+        rho(j,1)=datarcvr(j,3)+c*Tsv(j);
+        error(j,1)=realRange(j,1)-rho(j,1);
+    end
+    calibrate_Rcvr{i,6}=error;
+    realRange=[];
+    rho=[];
+    error=[];
+end
+%%
+for o=1:size(Rcvr,1)
+    datarcvr=Rcvr{o,3};
+    SatPosi=Rcvr{o,4};
+    Tsv=Rcvr{o,5};
+    error=calibrate_Rcvr{o,6};
+    x=0;
+    y=0;
+    z=0;
+    bias=0;
+    rhobar=[];
+    rho=[];
+    drho=[];
+    H=[];
+    for i=1:1000000
+        for j=1:size(datarcvr,1)
+            rhobar(j,1)=norm([x-SatPosi(j,2) y-SatPosi(j,3) z-SatPosi(j,4)]);
+            rho(j,1)=(datarcvr(j,3)+c*Tsv(j))+error(j);
+            drho(j,1)=rho(j,1)-rhobar(j,1)-bias;
+            H(j,:)=[(x-SatPosi(j,2))/rhobar(j,1) (y-SatPosi(j,3))/rhobar(j,1) (z-SatPosi(j,4))/rhobar(j,1) 1];
+        end
+        delta=inv(H'*H)*H'*drho;
+        x=x+delta(1);
+        y=y+delta(2);
+        z=z+delta(3);
+        bias=bias+delta(4);
+        if abs(delta(1))<10^-8||abs(delta(2))<10^-8||abs(delta(3))<10^-8
+             break;
+        end
+    end
+     r_xyzb(o,1)=x;
+     r_xyzb(o,2)=y;
+     r_xyzb(o,3)=z;
+     r_xyzb(o,4)=bias/c;
+end
+%%
+wgs84 = wgs84Ellipsoid('meter');
+for p=1:size(r_xyzb,1)
+    [llh(p,1),llh(p,2),llh(p,3)] = ecef2geodetic(wgs84,r_xyzb(p,1),r_xyzb(p,2),r_xyzb(p,3));
+end
+for p=1:size(r_xyzb,1)
+   [enu(p,1),enu(p,2),enu(p,3)] = ecef2enu(r_xyzb(p,1),r_xyzb(p,2),r_xyzb(p,3),llh(1,1),llh(1,2),llh(1,3),wgs84);
+end
